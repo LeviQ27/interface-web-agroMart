@@ -13,9 +13,12 @@
         cover
         class="product-image"
       >
-        <template v-slot:placeholder>
+        <template #placeholder>
           <div class="d-flex align-center justify-center fill-height">
-            <v-icon size="64" color="grey-lighten-2">
+            <v-icon
+              size="64"
+              color="grey-lighten-2"
+            >
               mdi-image-outline
             </v-icon>
           </div>
@@ -39,7 +42,10 @@
         {{ product.nome }}
       </h3>
 
-      <p v-if="product.descricao" class="text-body-2 text-grey-darken-1 mb-3">
+      <p
+        v-if="product.descricao"
+        class="text-body-2 text-grey-darken-1 mb-3"
+      >
         {{ truncatedDescription }}
       </p>
 
@@ -49,7 +55,10 @@
           <span class="text-h6 font-weight-bold text-primary">
             R$ {{ formatPrice(product.valor) }}
           </span>
-          <span v-if="product.unidade_medida" class="text-caption text-grey-darken-1 ml-1">
+          <span
+            v-if="product.unidade_medida"
+            class="text-caption text-grey-darken-1 ml-1"
+          >
             / {{ product.unidade_medida }}
           </span>
         </div>
@@ -64,10 +73,17 @@
       </div>
 
       <!-- Informações da loja -->
-      <div v-if="product.loja?.data" class="store-info">
-        <v-divider class="mb-2"></v-divider>
+      <div
+        v-if="product.loja?.data"
+        class="store-info"
+      >
+        <v-divider class="mb-2" />
         <div class="d-flex align-center">
-          <v-icon size="small" class="mr-1" color="grey-darken-1">
+          <v-icon
+            size="small"
+            class="mr-1"
+            color="grey-darken-1"
+          >
             mdi-store
           </v-icon>
           <span class="text-caption text-grey-darken-1">
@@ -84,10 +100,11 @@
         variant="outlined"
         block
         size="large"
-        :disabled="product.quantidade === 0"
         @click.stop="$emit('edit', product)"
       >
-        <v-icon class="mr-2">mdi-pencil</v-icon>
+        <v-icon class="mr-2">
+          mdi-pencil
+        </v-icon>
         Editar
       </v-btn>
     </v-card-actions>
@@ -95,9 +112,9 @@
 </template>
 
 <script>
-import { computed } from 'vue'
+import { computed } from 'vue';
 
-import logo from '@/assets/logo.png' // teste para inserir imagem de placeholder
+import logo from '@/assets/logo.png'; // teste para inserir imagem de placeholder
 
 
 export default {
@@ -105,48 +122,44 @@ export default {
   props: {
     product: {
       type: Object,
-      required: true
-    }
+      required: true,
+    },
   },
   emits: ['click', 'edit'],
   setup(props) {
     const productImage = computed(() => {
-      const image = props.product?.attributes?.imagem?.data
-      if (image) {
-        // Se for URL completa, usar diretamente
-        if (image.attributes.url.startsWith('http')) {
-          return image.attributes.url
-        }
-        // Se for path relativo, construir URL completa
-        const baseUrl = process.env.VUE_APP_STRAPI_URL || 'http://localhost:1337'
-        return `${baseUrl}${image.attributes.url}`
+      const media = props.product?.imagem || props.product?.attributes?.imagem;
+      const image = media?.data?.attributes || media?.attributes || media;
+      const url = image?.url || image?.formats?.medium?.url || image?.formats?.small?.url || image?.formats?.thumbnail?.url;
+      if (url) {
+        if (/^https?:\/\//i.test(url)) return url;
+        const baseUrl = (process.env.VUE_APP_STRAPI_API_URL || 'http://localhost:1337/api').replace(/\/api\/?$/, '');
+        return `${baseUrl}${url.startsWith('/') ? url : `/${url}`}`;
       }
-      // Imagem placeholder
-      // return '/placeholder-product.jpg'
-      return logo // uso de imagem teste
-    })
+      return logo;
+    });
 
     const truncatedDescription = computed(() => {
-      const desc = props.product.descricao
-      if (!desc) return ''
-      return desc.length > 100 ? `${desc.substring(0, 100)}...` : desc
-    })
+      const desc = props.product.descricao;
+      if (!desc) return '';
+      return desc.length > 100 ? `${desc.substring(0, 100)}...` : desc;
+    });
 
     const formatPrice = (price) => {
-      if (!price) return '0,00'
+      if (!price) return '0,00';
       return price.toLocaleString('pt-BR', {
         minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      })
-    }
+        maximumFractionDigits: 2,
+      });
+    };
 
     return {
       productImage,
       truncatedDescription,
-      formatPrice
-    }
-  }
-}
+      formatPrice,
+    };
+  },
+};
 </script>
 
 <style scoped>

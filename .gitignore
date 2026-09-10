@@ -16,6 +16,5 @@ coverage/
 *.swo
 
 # Environment
-.env.local
-.env.*.local
+.env
 
