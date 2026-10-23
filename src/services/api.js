@@ -1,7 +1,14 @@
 import axios from 'axios';
 
 // URL base da API Strapi - pode ser configurada via variável de ambiente
-const API_BASE_URL = process.env.VUE_APP_STRAPI_API_URL || 'http://localhost:1337/api';
+// Ao abrir a interface via IP da rede no celular, localhost apontaria para o
+// próprio telefone. Preservamos URLs remotas explícitas e mudamos somente
+// localhost/127.0.0.1 quando a página é servida em outro host.
+const configuredApiUrl = process.env.VUE_APP_STRAPI_API_URL || 'http://localhost:1337/api';
+const browserHost = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+const API_BASE_URL = browserHost && !['localhost', '127.0.0.1'].includes(browserHost)
+  ? configuredApiUrl.replace(/(localhost|127\.0\.0\.1)(?=:\d+)/, browserHost)
+  : configuredApiUrl;
 const STRAPI_ROOT_URL = API_BASE_URL.replace(/\/api\/?$/, '');
 
 
@@ -204,7 +211,7 @@ export const apiService = {
   getPlans: (params = {}) => {
     return api.get('/planos', { 
       params: {
-        populate: ['imagem', 'lojas', 'assinantes'],
+        populate: ['imagem', 'lojas', 'assinantes', 'cestas'],
         ...params,
       },
     });
@@ -213,10 +220,16 @@ export const apiService = {
   getPlan: (id) => {
     return api.get(`/planos/${id}`, {
       params: {
-        populate: ['imagem', 'lojas', 'assinantes'],
+        populate: ['imagem', 'lojas', 'assinantes', 'cestas'],
       },
     });
   },
+
+  createSubscriptionPlan: (data) => api.post('/planos-gerenciar', { data }),
+  updateSubscriptionPlan: (id, data) => api.put(`/planos-gerenciar/${id}`, { data }),
+  deleteSubscriptionPlan: (id, lojaId) => api.delete(`/planos-gerenciar/${id}`, { params: { lojaId } }),
+  getStoreSubscriptions: (id) => api.get(`/assinaturas/loja/${id}`),
+  renewSubscription: (id) => api.post(`/assinaturas/${id}/gerar-cobranca`),
 
   // Assinantes
   getSubscribers: (params = {}) => {
@@ -333,10 +346,9 @@ export const apiService = {
     const formData = new FormData();
     formData.append('files', file);
     
-    return api.post('/upload', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+    return api.post('/uploads-produtor', formData, {
+      headers: { 'Content-Type': undefined },
+      timeout: 60000,
     });
   },
 };

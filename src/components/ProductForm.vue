@@ -234,7 +234,7 @@ export default {
 
     const firstFile = (value) => {
       if (!value) return null;
-      if (value instanceof File) return value;
+      if (typeof File !== 'undefined' && value instanceof File) return value;
       if (Array.isArray(value)) return value[0] || null;
       if (value.target?.files?.length) return value.target.files[0];
       return null;
@@ -280,12 +280,14 @@ export default {
         if (file) {
           const uploadResponse = await apiService.uploadFile(file);
           const uploaded = Array.isArray(uploadResponse.data) ? uploadResponse.data[0] : uploadResponse.data;
-          if (uploaded?.id) productData.imagem = uploaded.id;
+          if (!uploaded?.id) throw new Error('Upload não retornou o ID da imagem.');
+          productData.imagem = uploaded.id;
         }
 
         emit('save', productData);
       } catch (error) {
         console.error('Erro ao salvar produto:', error);
+        alert(error.response?.data?.error?.message || error.message || 'Não foi possível enviar a imagem.');
       } finally {
         loading.value = false;
       }

@@ -61,7 +61,7 @@ const normalizeOrder = (item) => {
   const loja = normalizeRelation(order.loja);
   const itensRaw = order.itens?.data || order.itens || [];
   const itens = Array.isArray(itensRaw) ? itensRaw.map(unwrap) : [];
-  const total = Number(order.valor || order.total || itens.reduce((sum, item) => sum + Number(item.valor || 0) * Number(item.quantidade || 1), 0));
+  const total = Number(order.valor_total ?? order.valor ?? order.total ?? itens.reduce((sum, item) => sum + Number(item.valor || 0) * Number(item.quantidade || 1), 0));
 
   return {
     ...order,

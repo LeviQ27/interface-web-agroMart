@@ -163,7 +163,8 @@
             >
               <v-text-field
                 v-model="form.nome_recebedor"
-                label="Recebedor"
+                readonly
+                label="Recebedor (nome da loja)"
                 variant="outlined"
                 density="comfortable"
               />
@@ -308,64 +309,29 @@
             </div>
           </div>
 
-          <v-row>
-            <v-col
-              cols="12"
-              md="8"
+          <div class="mb-3">
+            <div class="text-subtitle-1 font-weight-bold mb-1">
+              R$ {{ formatPrice(payment.valor) }}
+            </div>
+            <div class="text-body-2 text-grey-darken-1 mb-2">
+              Recebedor: {{ payment.loja?.nome || payment.loja?.attributes?.nome || storeName(payment.loja?.id) || payment.nome_recebedor || '-' }} • Chave: {{ payment.chave_pix || '-' }}
+            </div>
+            <div class="text-body-2 text-grey-darken-1 mb-2">
+              Pedido/Extrato vinculado: {{ relatedOrderLabel(payment) }}
+            </div>
+            <div class="text-body-2 text-grey-darken-1 mb-2">
+              Comprovante: {{ receiptLabel(payment) }}
+            </div>
+            <v-alert
+              type="info"
+              variant="tonal"
+              density="compact"
+              class="mt-2"
             >
-              <div class="text-subtitle-1 font-weight-bold mb-1">
-                R$ {{ formatPrice(payment.valor) }}
-              </div>
-              <div class="text-body-2 text-grey-darken-1 mb-2">
-                Recebedor: {{ payment.nome_recebedor || '-' }} • Chave: {{ payment.chave_pix || '-' }}
-              </div>
-              <div class="text-body-2 text-grey-darken-1 mb-2">
-                Pedido/Extrato vinculado: {{ relatedOrderLabel(payment) }}
-              </div>
-              <div class="text-body-2 text-grey-darken-1 mb-2">
-                Comprovante: {{ receiptLabel(payment) }}
-              </div>
-              <v-textarea
-                :model-value="payment.pix_copia_cola || ''"
-                label="Pix Copia e Cola"
-                readonly
-                variant="outlined"
-                auto-grow
-                rows="2"
-              />
-            </v-col>
-            <v-col
-              cols="12"
-              md="4"
-              class="text-center"
-            >
-              <v-img
-                v-if="qrSrc(payment)"
-                :src="qrSrc(payment)"
-                alt="QR Code Pix"
-                max-width="180"
-                class="mx-auto mb-2"
-              />
-              <v-icon
-                v-else
-                size="96"
-                color="grey-lighten-1"
-              >
-                mdi-qrcode
-              </v-icon>
-              <v-btn
-                size="small"
-                variant="outlined"
-                :disabled="!payment.pix_copia_cola"
-                @click="copyPix(payment.pix_copia_cola)"
-              >
-                <v-icon class="mr-1">
-                  mdi-content-copy
-                </v-icon>
-                Copiar Pix
-              </v-btn>
-            </v-col>
-          </v-row>
+              O Pix Copia e Cola e o QR Code ficam disponíveis apenas no aplicativo mobile do cliente.
+              Na interface web, o agricultor acompanha a cobrança, baixa o comprovante e aprova ou rejeita o pagamento.
+            </v-alert>
+          </div>
 
           <v-divider class="my-3" />
 
@@ -433,6 +399,7 @@ import DefaultLayout from '../layouts/DefaultLayout.vue';
 import EmptyState from '../components/EmptyState.vue';
 import { useAppStore } from '../store/app';
 import { usePaymentStore } from '../store/payments';
+import { apiService } from '../services/api';
 
 export default {
   name: 'PaymentsPage',
@@ -444,13 +411,16 @@ export default {
     const statusFilter = ref('TODOS');
     const selectedOrderId = ref(null);
     const actionLoading = ref(null);
+    const myStores = ref([]);
+    const storeName = (id) => myStores.value.find(store => Number(store.id) === Number(id))?.nome || '';
+    const syncReceiver = (id) => { const name = storeName(id); if (name) form.nome_recebedor = name; };
 
     const form = reactive({
       extrato: null,
       referencia_pedido: '',
       valor: 0,
       chave_pix: '',
-      nome_recebedor: 'CSA AGROMART',
+      nome_recebedor: '',
       cidade_recebedor: 'BRASILIA',
       loja: null,
       consumidor: null,
@@ -505,10 +475,12 @@ export default {
       form.referencia_pedido = `Pedido #${order.id}`;
       form.valor = Number(order.total || 0);
       form.loja = order.loja?.id || null;
+      syncReceiver(form.loja);
       form.consumidor = order.user?.id || null;
     };
 
     const generatePayment = async () => {
+      syncReceiver(form.loja);
       if (!form.referencia_pedido || !form.valor || !form.chave_pix || !form.nome_recebedor) {
         appStore.showSnackbar('Preencha pedido, valor, chave Pix e recebedor.', 'warning');
         return;
@@ -529,10 +501,12 @@ export default {
       form.referencia_pedido = '';
       form.valor = 0;
       form.chave_pix = '';
-      form.nome_recebedor = 'CSA AGROMART';
+      form.nome_recebedor = '';
+      if (myStores.value.length === 1) { form.loja = myStores.value[0].id; syncReceiver(form.loja); }
       form.cidade_recebedor = 'BRASILIA';
       form.loja = null;
       form.consumidor = null;
+      if (myStores.value.length === 1) { form.loja = myStores.value[0].id; syncReceiver(form.loja); }
     };
 
     const withAction = async (key, callback, successMessage) => {
@@ -597,21 +571,11 @@ export default {
 
     const deletePayment = (id) => withAction(`delete-${id}`, () => paymentStore.deletePayment(id), 'Pagamento apagado.');
 
-    const copyPix = async (value) => {
-      if (!value) return;
-      await navigator.clipboard.writeText(value);
-      appStore.showSnackbar('Código Pix copiado.', 'success');
-    };
 
     const reload = async () => {
       await Promise.all([paymentStore.fetchPayments(), paymentStore.fetchOrders()]);
     };
 
-    const qrSrc = (payment) => {
-      if (payment.qr_code_url) return payment.qr_code_url;
-      if (!payment.pix_copia_cola) return '';
-      return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(payment.pix_copia_cola)}`;
-    };
 
     const relatedOrderLabel = (payment) => {
       const orderId = payment.extrato?.id || payment.extrato;
@@ -642,11 +606,19 @@ export default {
       EXPIRADO: 'grey',
     }[status] || 'grey');
 
-    onMounted(reload);
+    onMounted(async () => {
+      try {
+        const response = await apiService.getMyStores();
+        const items = response.data?.data || response.data || [];
+        myStores.value = (Array.isArray(items) ? items : []).map(item => ({ id: item.id, ...(item.attributes || item) }));
+        if (myStores.value.length === 1) { form.loja = myStores.value[0].id; syncReceiver(form.loja); }
+      } catch (e) { console.warn('Falha ao consultar lojas:', e.message); }
+      await reload();
+    });
 
     return {
       paymentStore,
-      form,
+      form, myStores, storeName, syncReceiver,
       search,
       statusFilter,
       statusOptions,
@@ -664,9 +636,7 @@ export default {
       approve,
       reject,
       deletePayment,
-      copyPix,
       reload,
-      qrSrc,
       relatedOrderLabel,
       receiptLabel,
       formatPrice,

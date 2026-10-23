@@ -272,6 +272,7 @@ export default {
         if (route.query.edit) router.replace({ name: 'Produtos' });
       } catch (error) {
         console.error('Erro ao salvar produto:', error);
+        alert(error.response?.data?.error?.message || error.message || 'Não foi possível salvar o produto.');
       }
     };
 

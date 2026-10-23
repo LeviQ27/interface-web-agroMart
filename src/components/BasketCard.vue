@@ -39,7 +39,7 @@
     <!-- Conteúdo do card -->
     <v-card-text class="pa-4">
       <h3 class="text-h6 font-weight-bold mb-2">
-        Cesta Semanal
+        {{ basket.nome || basket.descricao || `Cesta #${basket.id}` }}
       </h3>
 
       <p class="text-body-2 text-grey-darken-1 mb-3">
@@ -95,17 +95,14 @@
           class="pa-1"
         >
           <v-btn
-            color="primary"
+            color="secondary"
             variant="outlined"
             block
-            size="large"
-            :disabled="basket.quantidade === 0"
-            @click.stop="$emit('checkout', basket)"
+            @click.stop="$emit('edit', basket)"
           >
-            <v-icon class="mr-2">
-              mdi-truck-delivery
-            </v-icon>
-            Pedir
+            <v-icon class="mr-1">
+              mdi-pencil
+            </v-icon>Editar
           </v-btn>
         </v-col>
         <v-col
@@ -113,16 +110,14 @@
           class="pa-1"
         >
           <v-btn
-            color="secondary"
+            color="error"
             variant="outlined"
             block
-            size="large"
-            @click.stop="$emit('edit', basket)"
+            @click.stop="$emit('delete', basket)"
           >
-            <v-icon class="mr-2">
-              mdi-pencil
-            </v-icon>
-            Editar
+            <v-icon class="mr-1">
+              mdi-delete
+            </v-icon>Excluir
           </v-btn>
         </v-col>
       </v-row>
@@ -141,21 +136,20 @@ export default {
       required: true,
     },
   },
-  emits: ['click', 'edit', 'checkout'],
+  emits: ['click', 'edit', 'delete'],
   setup(props) {
     const basketImage = computed(() => {
-      const images = props.basket.imagem?.data;
-      if (images && images.length > 0) {
-        const image = images[0];
-        // Se for URL completa, usar diretamente
-        if (image.attributes.url.startsWith('http')) {
-          return image.attributes.url;
-        }
-        // Se for path relativo, construir URL completa
-        const baseUrl = process.env.VUE_APP_STRAPI_URL || 'http://localhost:1337';
-        return `${baseUrl}${image.attributes.url}`;
+      const media = props.basket?.imagem || props.basket?.attributes?.imagem;
+      const raw = media?.data || media;
+      const first = Array.isArray(raw) ? raw[0] : raw;
+      const image = first?.attributes || first;
+      const url = image?.url || image?.formats?.medium?.url || image?.formats?.small?.url || image?.formats?.thumbnail?.url;
+      if (url) {
+        if (/^https?:\/\//i.test(url)) return url;
+        const baseUrl = (process.env.VUE_APP_STRAPI_API_URL || 'http://localhost:1337/api').replace(/\/api\/?$/, '');
+        return `${baseUrl}${url.startsWith('/') ? url : `/${url}`}`;
       }
-      // Imagem placeholder
+      // Media records may reference removed local files; fallback is shown on load failure.
       return '/placeholder-basket.jpg';
     });
 

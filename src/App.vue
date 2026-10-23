@@ -46,7 +46,16 @@
         :value="route.name"
         @click="$router.push({ name: route.name })"
       >
-        <v-icon>{{ route.meta.icon }}</v-icon>
+        <span
+          v-if="route.name === 'Assinaturas'"
+          aria-hidden="true"
+          style="font-size: 23px; line-height: 1"
+        >📅</span>
+        <v-icon
+          v-else
+          :icon="route.meta.icon"
+          size="24"
+        />
         <span>{{ route.meta.title }}</span>
       </v-btn>
     </v-bottom-navigation>
@@ -90,6 +99,7 @@ export default {
       { name: 'Home', meta: { title: 'Início', icon: 'mdi-home' } },
       { name: 'Produtos', meta: { title: 'Produtos', icon: 'mdi-package-variant' } },
       { name: 'Cestas', meta: { title: 'Cestas', icon: 'mdi-basket' } },
+      { name: 'Assinaturas', meta: { title: 'Planos', icon: 'mdi-calendar-repeat' } },
       { name: 'Pedidos', meta: { title: 'Pedidos', icon: 'mdi-clipboard-list' } },
       { name: 'Pagamentos', meta: { title: 'Pix', icon: 'mdi-cash-multiple' } },
       { name: 'Perfil', meta: { title: 'Perfil', icon: 'mdi-account' } },

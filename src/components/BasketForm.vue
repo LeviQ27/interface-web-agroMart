@@ -11,6 +11,17 @@
         @submit.prevent="handleSubmit"
       >
         <v-row>
+          <!-- Nome definido pelo agricultor -->
+          <v-col cols="12">
+            <v-text-field
+              v-model="formData.nome"
+              label="Nome da cesta *"
+              placeholder="Ex.: Cesta da Fazenda, Cesta Família"
+              :rules="nameRules"
+              variant="outlined"
+              required
+            />
+          </v-col>
           <!-- Descrição da cesta -->
           <v-col cols="12">
             <v-textarea
@@ -32,12 +43,12 @@
             md="6"
           >
             <v-text-field
-              v-model="formData.valor"
+              :model-value="basketTotal.toFixed(2)"
+              readonly
               label="Preço (R$) *"
               type="number"
               step="0.01"
               min="0"
-              :rules="priceRules"
               variant="outlined"
               density="comfortable"
               prefix="R$"
@@ -61,6 +72,64 @@
             />
           </v-col>
 
+          <v-col cols="12">
+            <h3 class="text-subtitle-1 mb-2">
+              Produtos da cesta
+            </h3>
+            <div
+              v-for="(item, index) in formData.composicao"
+              :key="index"
+              class="d-flex align-center ga-2"
+            >
+              <v-select
+                v-model="item.produtoId"
+                :items="availableProducts"
+                item-title="nome"
+                item-value="id"
+                label="Produto"
+                class="flex-grow-1"
+              />
+              <v-text-field
+                :model-value="displayQuantity(item)"
+                type="number"
+                step="any"
+                min="0.01"
+                label="Quantidade"
+                style="max-width:125px"
+                @update:model-value="setDisplayQuantity(item, $event)"
+              />
+              <v-select
+                v-if="isWeight(item.produtoId)"
+                v-model="item.unidadeEntrada"
+                :items="['kg', 'g']"
+                label="Medida"
+                style="max-width:95px"
+                @update:model-value="updateUnit(item)"
+              />
+              <v-text-field
+                :model-value="unitFor(item.produtoId)"
+                label="Unidade"
+                readonly
+                style="max-width:115px"
+              />
+              <v-btn
+                icon="mdi-delete"
+                variant="text"
+                color="error"
+                @click="formData.composicao.splice(index, 1)"
+              />
+            </div>
+            <v-btn
+              variant="outlined"
+              prepend-icon="mdi-plus"
+              @click="formData.composicao.push({ produtoId: null, quantidade: 1 })"
+            >
+              Adicionar produto à cesta
+            </v-btn>
+            <p class="text-caption mt-2">
+              Informe a composição para que os planos calculem automaticamente o preço das cestas selecionadas.
+            </p>
+          </v-col>
           <!-- Upload de imagens -->
           <v-col cols="12">
             <v-file-input
@@ -154,6 +223,7 @@
 <script>
 import { ref, computed, watch, onMounted } from 'vue';
 import { apiService } from '../services/api';
+import { useProductStore } from '../store/products';
 
 export default {
   name: 'BasketForm',
@@ -165,6 +235,17 @@ export default {
   },
   emits: ['save', 'cancel'],
   setup(props, { emit }) {
+    const productStore = useProductStore();
+    const availableProducts = computed(() => productStore.products);
+    const isWeight = id => ['kg', 'quilo', 'quilograma'].includes(String(unitFor(id)).toLowerCase());
+    const displayQuantity = item => item.unidadeEntrada === 'g' && isWeight(item.produtoId) ? Number((Number(item.quantidade || 0) * 1000).toFixed(3)) : item.quantidade;
+    const setDisplayQuantity = (item, value) => { item.quantidade = Math.max(0, Number(value || 0)) / (item.unidadeEntrada === 'g' && isWeight(item.produtoId) ? 1000 : 1); };
+    const updateUnit = item => { if (!isWeight(item.produtoId)) item.unidadeEntrada = 'kg'; };
+    const unitFor = id => availableProducts.value.find(p => Number(p.id) === Number(id))?.unidade_medida || 'unidade';
+    const basketTotal = computed(() => Math.round((formData.value.composicao || []).reduce((sum, item) => {
+      const product = availableProducts.value.find(p => Number(p.id) === Number(item.produtoId));
+      return sum + Number(product?.valor || 0) * Number(item.quantidade || 0);
+    }, 0) * 100) / 100);
     const form = ref(null);
     const valid = ref(false);
     const loading = ref(false);
@@ -173,22 +254,21 @@ export default {
 
     // Dados do formulário
     const formData = ref({
+      nome: '',
       descricao: '',
       valor: null,
       quantidade: null,
+      composicao: [],
     });
 
     // Regras de validação
+    const nameRules = [v => !!String(v || '').trim() || 'Informe o nome da cesta'];
     const descriptionRules = [
       v => !!v || 'Descrição é obrigatória',
       v => (v && v.length >= 10) || 'Descrição deve ter pelo menos 10 caracteres',
       v => (v && v.length <= 500) || 'Descrição deve ter no máximo 500 caracteres',
     ];
 
-    const priceRules = [
-      v => !!v || 'Preço é obrigatório',
-      v => (v && v > 0) || 'Preço deve ser maior que zero',
-    ];
 
     const quantityRules = [
       v => v !== null && v !== undefined && v !== '' || 'Quantidade é obrigatória',
@@ -202,9 +282,11 @@ export default {
       if (props.basket) {
         const attrs = props.basket;
         formData.value = {
+          nome: attrs.nome || '',
           descricao: attrs.descricao || '',
           valor: attrs.valor || null,
-          quantidade: attrs.quantidade || null,
+          quantidade: attrs.quantidade ?? null,
+          composicao: Array.isArray(attrs.composicao) ? attrs.composicao.map(i => ({ produtoId: Number(i.produtoId), quantidade: Number(i.quantidade) })) : [],
         };
 
         // Carregar imagens existentes
@@ -219,9 +301,11 @@ export default {
       } else {
         // Resetar formulário para nova cesta
         formData.value = {
+          nome: '',
           descricao: '',
           valor: null,
           quantidade: null,
+          composicao: [],
         };
         imagePreviews.value = [];
         imageFiles.value = [];
@@ -259,25 +343,33 @@ export default {
 
     // Submeter formulário
     const handleSubmit = async () => {
-      if (!valid.value) return;
+      const validation = await form.value?.validate?.();
+      if (validation && validation.valid === false) return;
 
       loading.value = true;
 
       try {
-        let basketData = { ...formData.value };
+        if (!formData.value.composicao.length || basketTotal.value <= 0) {
+          alert('Adicione produtos e quantidades válidas à cesta.');
+          return;
+        }
+        let basketData = { ...formData.value, valor: basketTotal.value };
 
         // Upload das imagens se houver
-        if (imageFiles.value && imageFiles.value.length > 0) {
-          const uploadPromises = Array.from(imageFiles.value).map(file => 
-            apiService.uploadFile(file),
-          );
-          const uploadResponses = await Promise.all(uploadPromises);
-          basketData.imagem = uploadResponses.map(response => response.data[0].id);
+        const selectedFiles = Array.from(imageFiles.value || []).filter(file => file && typeof file.arrayBuffer === 'function');
+        if (selectedFiles.length) {
+          const uploadResponses = await Promise.all(selectedFiles.map(file => apiService.uploadFile(file)));
+          const ids = uploadResponses.flatMap(response => Array.isArray(response.data) ? response.data : [response.data]).map(media => media?.id).filter(Boolean);
+          if (ids.length !== selectedFiles.length) throw new Error('Upload de imagem não retornou identificadores válidos.');
+          const previousMedia = props.basket?.imagem?.data || props.basket?.imagem || [];
+          const previousIds = (Array.isArray(previousMedia) ? previousMedia : [previousMedia]).map(item => Number(item?.id)).filter(Boolean);
+          basketData.imagem = [...previousIds, ...ids];
         }
 
         emit('save', basketData);
       } catch (error) {
         console.error('Erro ao salvar cesta:', error);
+        alert(error.response?.data?.error?.message || error.message || 'Erro ao enviar imagem da cesta.');
       } finally {
         loading.value = false;
       }
@@ -287,18 +379,22 @@ export default {
     watch(() => props.basket, loadBasketData, { immediate: true });
 
     onMounted(() => {
+      productStore.fetchProducts();
       loadBasketData();
     });
 
     return {
       form,
+      availableProducts,
+      basketTotal,
+      unitFor, isWeight, displayQuantity, setDisplayQuantity, updateUnit,
       valid,
       loading,
       imageFiles,
       imagePreviews,
       formData,
+      nameRules,
       descriptionRules,
-      priceRules,
       quantityRules,
       isEditing,
       handleImageChange,

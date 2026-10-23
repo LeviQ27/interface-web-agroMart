@@ -9,6 +9,7 @@ const normalizeBasket = (item) => {
     id: item?.id || attrs.id,
     ...attrs,
     attributes: attrs,
+    nome: attrs.nome || '',
     descricao: attrs.descricao || '',
     valor: Number(attrs.valor || 0),
     quantidade: Number(attrs.quantidade || 0),

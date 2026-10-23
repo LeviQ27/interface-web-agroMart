@@ -41,6 +41,12 @@ const routes = [
     },
   },
   {
+    path: '/assinaturas',
+    name: 'Assinaturas',
+    component: () => import('../pages/SubscriptionsPage.vue'),
+    meta: { title: 'Planos e Assinaturas', requiresAuth: true },
+  },
+  {
     path: '/pedidos',
     name: 'Pedidos',
     component: () => import('../pages/OrdersPage.vue'),

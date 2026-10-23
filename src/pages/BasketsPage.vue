@@ -8,7 +8,7 @@
             Minhas Cestas
           </h1>
           <p class="text-body-2 text-grey-darken-1 mb-0">
-            Organize produtos em cestas semanais
+            Cadastre e gerencie cestas para seus clientes
           </p>
         </div>
         
@@ -97,7 +97,7 @@
         <EmptyState
           icon="mdi-basket-outline"
           title="Nenhuma cesta encontrada"
-          :description="searchQuery ? 'Tente buscar com outros termos' : 'Comece criando sua primeira cesta semanal'"
+          :description="searchQuery ? 'Tente buscar com outros termos' : 'Comece criando sua primeira cesta'"
           :action-text="searchQuery ? null : 'Criar Cesta'"
           action-icon="mdi-plus"
           @action="showCreateDialog = true"
@@ -117,21 +117,28 @@
             :basket="basket"
             @click="viewBasket"
             @edit="editBasket"
-            @checkout="handleCheckout"
+            @delete="askDeleteBasket"
           />
         </v-col>
       </v-row>
 
-      <!-- Dialog de seleção de entrega -->
       <v-dialog
-        v-model="showDeliveryDialog"
-        max-width="500"
-        persistent
+        v-model="deleteDialog"
+        max-width="430"
       >
-        <DeliverySelection
-          @proceed="handleDeliveryProceed"
-          @cancel="handleDeliveryCancel"
-        />
+        <v-card>
+          <v-card-title>Excluir cesta?</v-card-title><v-card-text>A cesta "{{ basketToDelete?.nome || basketToDelete?.descricao }}" será removida. Confirme apenas se não estiver em uso por planos ativos.</v-card-text><v-card-actions>
+            <v-spacer /><v-btn @click="deleteDialog = false">
+              Cancelar
+            </v-btn><v-btn
+              color="error"
+              :loading="deleting"
+              @click="confirmDeleteBasket"
+            >
+              Excluir
+            </v-btn>
+          </v-card-actions>
+        </v-card>
       </v-dialog>
 
       <!-- Dialog de criação/edição de cesta -->
@@ -157,7 +164,6 @@ import BasketCard from '../components/BasketCard.vue';
 import LoadingCard from '../components/LoadingCard.vue';
 import EmptyState from '../components/EmptyState.vue';
 import BasketForm from '../components/BasketForm.vue';
-import DeliverySelection from '../components/DeliverySelection.vue';
 import { useBasketStore } from '../store/baskets';
 import { useAppStore } from '../store/app';
 
@@ -169,7 +175,6 @@ export default {
     LoadingCard,
     EmptyState,
     BasketForm,
-    DeliverySelection,
   },
   setup() {
     const basketStore = useBasketStore();
@@ -181,8 +186,9 @@ export default {
     const sortBy = ref('price_desc');
     const showCreateDialog = ref(false);
     const selectedBasket = ref(null);
-    const showDeliveryDialog = ref(false);
-    const deliveryDetails = ref(null);
+    const deleteDialog = ref(false);
+    const deleting = ref(false);
+    const basketToDelete = ref(null);
 
     // Opções de filtro
     const statusOptions = [
@@ -206,7 +212,7 @@ export default {
       if (searchQuery.value) {
         const query = searchQuery.value.toLowerCase();
         baskets = baskets.filter(basket =>
-          basket.descricao?.toLowerCase().includes(query),
+          `${basket.nome || ''} ${basket.descricao || ''}`.toLowerCase().includes(query),
         );
       }
 
@@ -231,11 +237,11 @@ export default {
       baskets.sort((a, b) => {
         switch (sortBy.value) {
         case 'price_asc':
-          return (a.attributes.valor || 0) - (b.attributes.valor || 0);
+          return (a.valor || 0) - (b.valor || 0);
         case 'price_desc':
-          return (b.attributes.valor || 0) - (a.attributes.valor || 0);
+          return (b.valor || 0) - (a.valor || 0);
         case 'quantity':
-          return (b.attributes.quantidade || 0) - (a.attributes.quantidade || 0);
+          return (b.quantidade || 0) - (a.quantidade || 0);
         default:
           return 0;
         }
@@ -245,25 +251,22 @@ export default {
     });
 
     // Ações
-    const handleCheckout = (basket) => {
-      selectedBasket.value = basket;
-      showDeliveryDialog.value = true;
+    const askDeleteBasket = basket => {
+      basketToDelete.value = basket;
+      deleteDialog.value = true;
     };
-
-    const handleDeliveryProceed = (details) => {
-      deliveryDetails.value = details;
-      showDeliveryDialog.value = false;
-      console.log('Detalhes da Entrega:', details);
-      console.log('Cesta para Checkout:', selectedBasket.value);
-      appStore.showSnackbar('Seleção de entrega concluída. Próxima etapa: Finalização do Pedido.', 'success');
-      selectedBasket.value = null;
-      deliveryDetails.value = null;
-    };
-
-    const handleDeliveryCancel = () => {
-      showDeliveryDialog.value = false;
-      selectedBasket.value = null;
-      deliveryDetails.value = null;
+    const confirmDeleteBasket = async () => {
+      if (!basketToDelete.value) return;
+      deleting.value = true;
+      try {
+        await basketStore.deleteBasket(basketToDelete.value.id);
+        deleteDialog.value = false;
+        basketToDelete.value = null;
+      } catch (e) {
+        appStore.showSnackbar(e.response?.data?.error?.message || e.message, 'error');
+      } finally {
+        deleting.value = false;
+      }
     };
 
     const viewBasket = (basket) => {
@@ -290,6 +293,7 @@ export default {
         selectedBasket.value = null;
       } catch (error) {
         console.error('Erro ao salvar cesta:', error);
+        appStore.showSnackbar(error.response?.data?.error?.message || error.message || 'Não foi possível salvar a cesta.', 'error');
       }
     };
 
@@ -317,11 +321,7 @@ export default {
       editBasket,
       handleSaveBasket,
       handleCancelBasket,
-      handleCheckout,
-      handleDeliveryProceed,
-      handleDeliveryCancel,
-      showDeliveryDialog,
-      deliveryDetails,
+      askDeleteBasket, confirmDeleteBasket, deleteDialog, deleting, basketToDelete,
     };
   },
 };

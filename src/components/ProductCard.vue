@@ -50,9 +50,9 @@
       </p>
 
       <!-- Preço e unidade -->
-      <div class="d-flex align-center justify-space-between mb-3">
+      <div class="d-flex align-start justify-space-between flex-wrap ga-2 mb-3">
         <div class="price-container">
-          <span class="text-h6 font-weight-bold text-primary">
+          <span class="text-h6 font-weight-bold text-primary product-price-amount">
             R$ {{ formatPrice(product.valor) }}
           </span>
           <span
@@ -187,7 +187,11 @@ export default {
   z-index: 1;
 }
 
+.product-price-amount { white-space: nowrap; display: inline-block; }
 .price-container {
+  min-width: 0;
+  flex-wrap: wrap;
+  column-gap: 4px;
   display: flex;
   align-items: baseline;
 }

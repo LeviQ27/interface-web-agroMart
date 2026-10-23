@@ -19,7 +19,9 @@
             size="large"
             @click="startNewStore"
           >
-            <v-icon class="mr-2">mdi-store-plus</v-icon>
+            <v-icon class="mr-2">
+              mdi-store-plus
+            </v-icon>
             Nova Loja
           </v-btn>
 
@@ -31,7 +33,9 @@
             :loading="publishing"
             @click="publishStore"
           >
-            <v-icon class="mr-2">mdi-cloud-upload</v-icon>
+            <v-icon class="mr-2">
+              mdi-cloud-upload
+            </v-icon>
             Publicar
           </v-btn>
 
@@ -41,7 +45,9 @@
             :loading="saving"
             @click="saveStore"
           >
-            <v-icon class="mr-2">mdi-content-save</v-icon>
+            <v-icon class="mr-2">
+              mdi-content-save
+            </v-icon>
             Salvar e publicar
           </v-btn>
         </div>
@@ -71,7 +77,10 @@
               
               <v-card-text class="pa-4">
                 <v-row>
-                  <v-col cols="12" v-if="storeStore.stores.length > 0">
+                  <v-col
+                    v-if="storeStore.stores.length > 0"
+                    cols="12"
+                  >
                     <v-select
                       :model-value="storeData.id"
                       :items="storeOptions"
@@ -83,8 +92,14 @@
                     />
                   </v-col>
 
-                  <v-col cols="12" v-if="storeData.id">
-                    <v-alert :type="isPublished ? 'success' : 'warning'" variant="tonal">
+                  <v-col
+                    v-if="storeData.id"
+                    cols="12"
+                  >
+                    <v-alert
+                      :type="isPublished ? 'success' : 'warning'"
+                      variant="tonal"
+                    >
                       {{ isPublished ? 'Loja publicada e disponível no mobile.' : 'Loja em rascunho. Clique em Publicar para aparecer no mobile.' }}
                     </v-alert>
                   </v-col>
@@ -152,7 +167,10 @@
                     />
                   </v-col>
 
-                  <v-col cols="12" md="6">
+                  <v-col
+                    cols="12"
+                    md="6"
+                  >
                     <v-text-field
                       v-model="storeData.chave_pix"
                       label="Chave Pix da loja"
@@ -163,7 +181,10 @@
                     />
                   </v-col>
 
-                  <v-col cols="12" md="4">
+                  <v-col
+                    cols="12"
+                    md="4"
+                  >
                     <v-text-field
                       v-model="storeData.nome_recebedor_pix"
                       label="Nome do recebedor Pix"
@@ -172,7 +193,10 @@
                     />
                   </v-col>
 
-                  <v-col cols="12" md="2">
+                  <v-col
+                    cols="12"
+                    md="2"
+                  >
                     <v-text-field
                       v-model="storeData.cidade_recebedor_pix"
                       label="Cidade Pix"
@@ -183,12 +207,19 @@
 
 
                   <v-col cols="12">
-                    <v-alert type="info" variant="tonal" class="mb-2">
+                    <v-alert
+                      type="info"
+                      variant="tonal"
+                      class="mb-2"
+                    >
                       Relações da loja: informe IDs separados por vírgula quando quiser vincular planos, assinantes, produtos ou cestas já existentes na API. Produtos e cestas criados pela interface já são vinculados automaticamente à loja selecionada.
                     </v-alert>
                   </v-col>
 
-                  <v-col cols="12" md="6">
+                  <v-col
+                    cols="12"
+                    md="6"
+                  >
                     <v-text-field
                       v-model="relationData.planos"
                       label="IDs de planos vinculados"
@@ -198,7 +229,10 @@
                     />
                   </v-col>
 
-                  <v-col cols="12" md="6">
+                  <v-col
+                    cols="12"
+                    md="6"
+                  >
                     <v-text-field
                       v-model="relationData.assinantes"
                       label="IDs de assinantes vinculados"
@@ -208,7 +242,10 @@
                     />
                   </v-col>
 
-                  <v-col cols="12" md="6">
+                  <v-col
+                    cols="12"
+                    md="6"
+                  >
                     <v-text-field
                       v-model="relationData.produtos"
                       label="IDs de produtos avulsos vinculados"
@@ -218,7 +255,10 @@
                     />
                   </v-col>
 
-                  <v-col cols="12" md="6">
+                  <v-col
+                    cols="12"
+                    md="6"
+                  >
                     <v-text-field
                       v-model="relationData.cestas"
                       label="IDs de cestas vinculadas"
